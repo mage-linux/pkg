@@ -2,6 +2,22 @@
 
 # shellcheck source=/dev/null
 
+log() {
+    fmt="$1"
+    shift
+    # shellcheck disable=2059
+    printf "\e[1m==> $fmt\e[m\n" "$@"
+}
+
+error() {
+    fmt="$2"
+    errcode="$1"
+    shift 2
+    # shellcheck disable=2059
+    printf "\e[1;31m$fmt\n" "$@"
+    exit "$errcode"
+}
+
 pkg_search() {
     IFS=:
     for path in $PKG_PATH; do
@@ -36,6 +52,14 @@ pkg_build() {
     dir=$(pkg_search "$1")
     . "$dir/karafile"
 
+    # shellcheck disable=2154
+    if [ -z "$depends" ]; then
+        IFS=
+        for pkg in $depends; do
+            pkg -b "$pkg"
+            pkg -i "$pkg"
+        done
+    fi
     builddir="/usr/pkg/build/$1-${version:?}"
     rootdir="/usr/pkg/root/$1-$version"
     mkdir "$builddir"
@@ -54,9 +78,7 @@ pkg_install() {
     dir=$(pkg_search "$1")
     . "$dir/karafile"
 
-    [ ! -d "/usr/pkg/root/$1-${version:?}" ] &&
-        echo "Package not built" && exit 1
-
+    [ ! -d "/usr/pkg/root/$1-${version:?}" ] && error "Package not built"
     mkdir -p "/usr/pkg/manifests/$1/"
     echo "$version" > "/usr/pkg/manifests/$1/version"
     find "/usr/pkg/root/$1-$version" > "/usr/pkg/manifests/$1/files"
@@ -74,12 +96,21 @@ pkg_uninstall() {
 
 case "$1" in
     -b)
-        pkg_build "$2"
+        shift
+        for pkg in "$@"; do
+            pkg_build "$pkg"
+        done
         ;;
     -i)
-        pkg_install "$2"
+        shift
+        for pkg in "$@"; do
+            pkg_install "$pkg"
+        done
         ;;
     -u)
-        pkg_uninstall "$2"
+        shift
+        for pkg in "$@"; do
+            pkg_uninstall "$pkg"
+        done
         ;;
 esac
