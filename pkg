@@ -37,15 +37,15 @@ EOF
         *://*)
             cd "/usr/pkg/sources"
             wget "$url"
-            cd "$2"
+            cd "$3"
             tar xf "/usr/pkg/sources/$(basename "$url")"
             ;;
         *)
-            cp "$1/$url" "$2"
+            cp "$2/$url" "$3/$url"
             ;;
     esac
     # shellcheck disable=2015
-    [ -n "$name" ] && mv "$2/$(basename "$url")" "$2/$name" || true
+    [ -n "$name" ] && mv "$3/$(basename "${url%.tar*}")" "$3/$name" || true
 }
 
 pkg_build() {
@@ -62,13 +62,15 @@ pkg_build() {
     fi
     builddir="/usr/pkg/build/$1-${version:?}"
     rootdir="/usr/pkg/root/$1-$version"
-    mkdir "$builddir"
-    mkdir "$rootdir"
+    mkdir -p "$builddir"
+    mkdir -p "$rootdir"
 
     echo "${sources:?}" | while read -r source; do
         fetch "$source" "$dir" "$builddir"
     done
 
+    src=$(echo "$sources" | { read -r src; basename "${src%.tar*}"; })
+    cp -r "$builddir/$src"/* "$builddir/"
     cd "$builddir"
     build "$rootdir"
     exit
@@ -79,9 +81,11 @@ pkg_install() {
     . "$dir/karafile"
 
     [ ! -d "/usr/pkg/root/$1-${version:?}" ] && error "Package not built"
+
     mkdir -p "/usr/pkg/manifests/$1/"
     echo "$version" > "/usr/pkg/manifests/$1/version"
     find "/usr/pkg/root/$1-$version" > "/usr/pkg/manifests/$1/files"
+
     while read -r file; do
         cp "/usr/pkg/root/$1-$version/$file" "/$file"
     done < "/usr/pkg/manifests/$1/files"
@@ -92,6 +96,11 @@ pkg_uninstall() {
         rm "/$file"
     done < "/usr/pkg/manifests/$1/files"
     rm -r "/usr/pkg/manifests/$1"
+}
+
+pkg_clean() {
+    rm -r "/usr/pkg/build/$1-*"
+    rm -r "/usr/pkg/root/$1-*"
 }
 
 case "$1" in
@@ -108,6 +117,12 @@ case "$1" in
         done
         ;;
     -u)
+        shift
+        for pkg in "$@"; do
+            pkg_uninstall "$pkg"
+        done
+        ;;
+    -c)
         shift
         for pkg in "$@"; do
             pkg_uninstall "$pkg"
