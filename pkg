@@ -87,11 +87,11 @@ pkg_install() {
     mkdir -p "/usr/pkg/manifests/$1/"
     echo "$version" > "/usr/pkg/manifests/$1/version"
     cd "/usr/pkg/root/$1-$version"
-    find . -type f | sed "s/^.\///g" > "/usr/pkg/manifests/$1/files"
+    find . -type f -o -type l | sed "s/^.\///g" > "/usr/pkg/manifests/$1/files"
 
     while read -r file; do
         mkdir -p "$(dirname "/$file")"
-        cp "/usr/pkg/root/$1-$version/$file" "/$file"
+        cp -P "/usr/pkg/root/$1-$version/$file" "/$file"
     done < "/usr/pkg/manifests/$1/files"
 }
 
