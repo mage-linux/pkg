@@ -26,7 +26,7 @@ pkg_search() {
             return 0
         fi
     done
-    return 1
+    error 1 "package %s not found" "$1"
 }
 
 fetch() {
@@ -36,11 +36,13 @@ EOF
     case $url in
         *://*)
             cd "/usr/pkg/sources"
+            rm -f "$(basename "$url")"
             wget "$url"
             cd "$3"
             tar xf "/usr/pkg/sources/$(basename "$url")"
             ;;
         *)
+            mkdir -p "$3/$(dirname "$url")"
             cp "$2/$url" "$3/$url"
             ;;
     esac
@@ -84,9 +86,11 @@ pkg_install() {
 
     mkdir -p "/usr/pkg/manifests/$1/"
     echo "$version" > "/usr/pkg/manifests/$1/version"
-    find "/usr/pkg/root/$1-$version" > "/usr/pkg/manifests/$1/files"
+    cd "/usr/pkg/root/$1-$version"
+    find . -type f | sed "s/^.\///g" > "/usr/pkg/manifests/$1/files"
 
     while read -r file; do
+        mkdir -p "$(dirname "/$file")"
         cp "/usr/pkg/root/$1-$version/$file" "/$file"
     done < "/usr/pkg/manifests/$1/files"
 }
