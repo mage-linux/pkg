@@ -55,10 +55,10 @@ pkg_build() {
     . "$dir/karafile"
 
     # shellcheck disable=2154
-    if [ -z "$depends" ]; then
+    if [ -n "$depends" ]; then
         IFS=
         for pkg in $depends; do
-            pkg -b "$pkg"
+            depends="" pkg -b "$pkg"
             pkg -i "$pkg"
         done
     fi
@@ -72,8 +72,9 @@ pkg_build() {
     done
 
     src=$(echo "$sources" | { read -r src; basename "${src%.tar*}"; })
-    cp -r "$builddir/$src"/* "$builddir/"
+    cp -pr "$builddir/$src"/* "$builddir/"
     cd "$builddir"
+    rm "$src"
     build "$rootdir"
     exit
 }
