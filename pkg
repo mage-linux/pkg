@@ -30,7 +30,7 @@ pkg_search() {
 }
 
 fetch() {
-    IFS= read -r url name << EOF
+    IFS=" " read -r url name << EOF
 $1
 EOF
     case $url in
