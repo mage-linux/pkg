@@ -36,8 +36,7 @@ EOF
     case $url in
         *://*)
             cd "/usr/pkg/sources"
-            rm -f "$(basename "$url")"
-            wget "$url"
+            [ ! -e "$(basename "$url")" ] && wget "$url"
             cd "$3"
             tar xf "/usr/pkg/sources/$(basename "$url")"
             ;;
@@ -56,7 +55,7 @@ pkg_build() {
 
     # shellcheck disable=2154
     if [ -n "$depends" ]; then
-        IFS=
+        IFS=" "
         for pkg in $depends; do
             depends="" pkg -b "$pkg"
             pkg -i "$pkg"
@@ -67,14 +66,14 @@ pkg_build() {
     mkdir -p "$builddir"
     mkdir -p "$rootdir"
 
-    echo "${sources:?}" | while read -r source; do
-        fetch "$source" "$dir" "$builddir"
-    done
-
-    src=$(echo "$sources" | { read -r src; basename "${src%.tar*}"; })
-    cp -pr "$builddir/$src"/* "$builddir/"
     cd "$builddir"
-    rm "$src"
+    i=0
+    path=$(echo "${sources:?}" | while read -r source; do
+               fetch "$source" "$dir" "$PWD"
+               [ "$i" = 0 ] && cd "$(basename "${source%.tar*}")" && echo "$PWD"
+               i=$((i+1))
+           done)
+    cd "$path"
     build "$rootdir"
     exit
 }
